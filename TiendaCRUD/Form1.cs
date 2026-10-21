@@ -10,6 +10,7 @@ namespace TiendaCRUD
         public Form1()
         {
             InitializeComponent();
+            CargarCategorias();
 
             dgvProductos.DataSource = productos;
 
@@ -56,16 +57,38 @@ namespace TiendaCRUD
 
         private void btnAgregar_Click(object? sender, EventArgs e)
         {
-            if (!ValidarCampos(out string nombre, out decimal precio, out int stock)) return;
+            if (!ValidarCampos(out string nombre, out decimal precio, out int stock))
+                return;
 
-            productos.Add(new Producto
+            if (cmbCategoria.SelectedValue is not int categoriaId)
             {
-                Id = siguienteId++,
-                Nombre = nombre,
-                Precio = precio,
-                Stock = stock
-            });
-            LimpiarCampos();
+                MessageBox.Show("Debes seleccionar una categoría.");
+                return;
+            }
+
+            try
+            {
+                using var db = new TiendaContext();
+
+                var producto = new Producto
+                {
+                    Nombre = nombre,
+                    Precio = precio,
+                    Stock = stock,
+                    CategoriaId = categoriaId
+                };
+
+                db.Productos.Add(producto);
+                db.SaveChanges();
+
+                MessageBox.Show("Producto guardado correctamente.");
+
+                LimpiarCampos();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al guardar el producto: " + ex.Message);
+            }
         }
 
         private void btnActualizar_Click(object? sender, EventArgs e)
@@ -118,6 +141,20 @@ namespace TiendaCRUD
                 txtPrecio.Text = p.Precio.ToString();
                 txtStock.Text = p.Stock.ToString();
             }
+        }
+
+        private void CargarCategorias()
+        {
+            using var db = new TiendaContext();
+
+            var categorias = db.Categorias
+                .OrderBy(c => c.Nombre)
+                .ToList();
+
+            cmbCategoria.DataSource = categorias;
+            cmbCategoria.DisplayMember = "Nombre";
+            cmbCategoria.ValueMember = "Id";
+            cmbCategoria.SelectedIndex = -1;
         }
     }
 }

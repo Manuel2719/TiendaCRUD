@@ -41,6 +41,8 @@
             btnEliminar = new Button();
             btnLimpiar = new Button();
             dgvProductos = new DataGridView();
+            cmbCategoria = new ComboBox();
+            lblCategoria = new Label();
             ((System.ComponentModel.ISupportInitialize)dgvProductos).BeginInit();
             SuspendLayout();
             // 
@@ -92,6 +94,7 @@
             txtId.ReadOnly = true;
             txtId.Size = new Size(125, 27);
             txtId.TabIndex = 4;
+            txtId.TabStop = false;
             // 
             // txtNombre
             // 
@@ -168,11 +171,30 @@
             dgvProductos.Size = new Size(820, 188);
             dgvProductos.TabIndex = 12;
             // 
+            // cmbCategoria
+            // 
+            cmbCategoria.FormattingEnabled = true;
+            cmbCategoria.Location = new Point(593, 94);
+            cmbCategoria.Name = "cmbCategoria";
+            cmbCategoria.Size = new Size(151, 28);
+            cmbCategoria.TabIndex = 13;
+            // 
+            // lblCategoria
+            // 
+            lblCategoria.AutoSize = true;
+            lblCategoria.Location = new Point(501, 98);
+            lblCategoria.Name = "lblCategoria";
+            lblCategoria.Size = new Size(74, 20);
+            lblCategoria.TabIndex = 14;
+            lblCategoria.Text = "Categoria";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(882, 453);
+            Controls.Add(lblCategoria);
+            Controls.Add(cmbCategoria);
             Controls.Add(dgvProductos);
             Controls.Add(btnLimpiar);
             Controls.Add(btnEliminar);
@@ -209,5 +231,7 @@
         private Button btnEliminar;
         private Button btnLimpiar;
         private DataGridView dgvProductos;
+        private ComboBox cmbCategoria;
+        private Label lblCategoria;
     }
 }

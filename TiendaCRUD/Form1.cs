@@ -1,24 +1,72 @@
-using System.ComponentModel;
-
 namespace TiendaCRUD
 {
     public partial class Form1 : Form
     {
-        private readonly BindingList<Producto> productos = new();
-        private int siguienteId = 1;
-
         public Form1()
         {
             InitializeComponent();
-            CargarCategorias();
 
-            dgvProductos.DataSource = productos;
+            dgvProductos.ReadOnly = true;
+            dgvProductos.AllowUserToAddRows = false;
+            dgvProductos.MultiSelect = false;
+            dgvProductos.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+
+            CargarCategorias();
 
             btnAgregar.Click += btnAgregar_Click;
             btnActualizar.Click += btnActualizar_Click;
             btnEliminar.Click += btnEliminar_Click;
             btnLimpiar.Click += btnLimpiar_Click;
             dgvProductos.SelectionChanged += dgvProductos_SelectionChanged;
+
+            CargarProductos();
+            LimpiarCampos();
+        }
+
+        private void CargarCategorias()
+        {
+            using var db = new TiendaContext();
+
+            var categorias = db.Categorias
+                .OrderBy(c => c.Nombre)
+                .ToList();
+
+            cmbCategoria.DataSource = categorias;
+            cmbCategoria.DisplayMember = "Nombre";
+            cmbCategoria.ValueMember = "Id";
+            cmbCategoria.SelectedIndex = -1;
+        }
+
+        private void CargarProductos()
+        {
+            try
+            {
+                using var db = new TiendaContext();
+
+                var lista = (from p in db.Productos
+                             join c in db.Categorias on p.CategoriaId equals c.Id
+                             orderby p.Id
+                             select new
+                             {
+                                 p.Id,
+                                 p.Nombre,
+                                 p.Precio,
+                                 p.Stock,
+                                 Categoria = c.Nombre,
+                                 p.CategoriaId
+                             }).ToList();
+
+                dgvProductos.DataSource = lista;
+
+                if (dgvProductos.Columns["CategoriaId"] != null)
+                    dgvProductos.Columns["CategoriaId"].Visible = false;
+                if (dgvProductos.Columns["Categoria"] != null)
+                    dgvProductos.Columns["Categoria"].HeaderText = "Categoría";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al cargar los productos: " + ex.Message);
+            }
         }
 
         private bool ValidarCampos(out string nombre, out decimal precio, out int stock)
@@ -42,6 +90,11 @@ namespace TiendaCRUD
                 MessageBox.Show("El stock debe ser un número entero válido.");
                 return false;
             }
+            if (cmbCategoria.SelectedValue is not int)
+            {
+                MessageBox.Show("Debes seleccionar una categoría.");
+                return false;
+            }
             return true;
         }
 
@@ -51,6 +104,7 @@ namespace TiendaCRUD
             txtNombre.Clear();
             txtPrecio.Clear();
             txtStock.Clear();
+            cmbCategoria.SelectedIndex = -1;
             dgvProductos.ClearSelection();
             txtNombre.Focus();
         }
@@ -60,11 +114,7 @@ namespace TiendaCRUD
             if (!ValidarCampos(out string nombre, out decimal precio, out int stock))
                 return;
 
-            if (cmbCategoria.SelectedValue is not int categoriaId)
-            {
-                MessageBox.Show("Debes seleccionar una categoría.");
-                return;
-            }
+            int categoriaId = (int)cmbCategoria.SelectedValue!;
 
             try
             {
@@ -83,6 +133,7 @@ namespace TiendaCRUD
 
                 MessageBox.Show("Producto guardado correctamente.");
 
+                CargarProductos();
                 LimpiarCampos();
             }
             catch (Exception ex)
@@ -93,36 +144,82 @@ namespace TiendaCRUD
 
         private void btnActualizar_Click(object? sender, EventArgs e)
         {
-            if (dgvProductos.SelectedRows.Count == 0 ||
-                dgvProductos.CurrentRow?.DataBoundItem is not Producto p)
+            if (!int.TryParse(txtId.Text, out int id))
             {
                 MessageBox.Show("Selecciona un producto de la tabla.");
                 return;
             }
-            if (!ValidarCampos(out string nombre, out decimal precio, out int stock)) return;
+            if (!ValidarCampos(out string nombre, out decimal precio, out int stock))
+                return;
 
-            p.Nombre = nombre;
-            p.Precio = precio;
-            p.Stock = stock;
-            dgvProductos.Refresh();
-            LimpiarCampos();
+            int categoriaId = (int)cmbCategoria.SelectedValue!;
+
+            try
+            {
+                using var db = new TiendaContext();
+
+                var producto = db.Productos.Find(id);
+                if (producto == null)
+                {
+                    MessageBox.Show("El producto ya no existe.");
+                    CargarProductos();
+                    LimpiarCampos();
+                    return;
+                }
+
+                producto.Nombre = nombre;
+                producto.Precio = precio;
+                producto.Stock = stock;
+                producto.CategoriaId = categoriaId;
+                db.SaveChanges();
+
+                MessageBox.Show("Producto actualizado correctamente.");
+
+                CargarProductos();
+                LimpiarCampos();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al actualizar el producto: " + ex.Message);
+            }
         }
 
         private void btnEliminar_Click(object? sender, EventArgs e)
         {
-            if (dgvProductos.SelectedRows.Count == 0 ||
-                dgvProductos.CurrentRow?.DataBoundItem is not Producto p)
+            if (!int.TryParse(txtId.Text, out int id))
             {
                 MessageBox.Show("Selecciona un producto de la tabla.");
                 return;
             }
 
-            var r = MessageBox.Show($"¿Eliminar \"{p.Nombre}\"?", "Confirmar",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (r == DialogResult.Yes)
+            var respuesta = MessageBox.Show(
+                $"¿Seguro que deseas eliminar \"{txtNombre.Text}\"?",
+                "Confirmar eliminación",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (respuesta != DialogResult.Yes)
+                return;
+
+            try
             {
-                productos.Remove(p);
+                using var db = new TiendaContext();
+
+                var producto = db.Productos.Find(id);
+                if (producto != null)
+                {
+                    db.Productos.Remove(producto);
+                    db.SaveChanges();
+                }
+
+                MessageBox.Show("Producto eliminado correctamente.");
+
+                CargarProductos();
                 LimpiarCampos();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al eliminar el producto: " + ex.Message);
             }
         }
 
@@ -133,28 +230,18 @@ namespace TiendaCRUD
 
         private void dgvProductos_SelectionChanged(object? sender, EventArgs e)
         {
-            if (dgvProductos.SelectedRows.Count > 0 &&
-                dgvProductos.CurrentRow?.DataBoundItem is Producto p)
-            {
-                txtId.Text = p.Id.ToString();
-                txtNombre.Text = p.Nombre;
-                txtPrecio.Text = p.Precio.ToString();
-                txtStock.Text = p.Stock.ToString();
-            }
-        }
+            if (dgvProductos.SelectedRows.Count == 0)
+                return;
 
-        private void CargarCategorias()
-        {
-            using var db = new TiendaContext();
+            var fila = dgvProductos.SelectedRows[0];
 
-            var categorias = db.Categorias
-                .OrderBy(c => c.Nombre)
-                .ToList();
+            txtId.Text = fila.Cells["Id"].Value?.ToString();
+            txtNombre.Text = fila.Cells["Nombre"].Value?.ToString();
+            txtPrecio.Text = fila.Cells["Precio"].Value?.ToString();
+            txtStock.Text = fila.Cells["Stock"].Value?.ToString();
 
-            cmbCategoria.DataSource = categorias;
-            cmbCategoria.DisplayMember = "Nombre";
-            cmbCategoria.ValueMember = "Id";
-            cmbCategoria.SelectedIndex = -1;
+            if (fila.Cells["CategoriaId"].Value is int categoriaId)
+                cmbCategoria.SelectedValue = categoriaId;
         }
     }
 }

@@ -1,16 +1,23 @@
+
 namespace TiendaCRUD
 {
     internal static class Program
     {
         /// <summary>
-        ///  The main entry point for the application.
+        /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
+            // Configuración inicial de Windows Forms
             ApplicationConfiguration.Initialize();
+
+            // Indicar dónde buscar la base de datos
+            AppDomain.CurrentDomain.SetData(
+                "DataDirectory",
+                AppDomain.CurrentDomain.BaseDirectory);
+
+            // Iniciar el formulario
             Application.Run(new Form1());
         }
     }
